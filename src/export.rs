@@ -1,7 +1,5 @@
 use printpdf::*;
 use std::fs::File;
-use std::io::BufWriter;
-use std::thread::current;
 
 const PAGE_HEIGHT:f64 = 297.0;
 const PAGE_WIDTH:f64 = 170.0;
@@ -18,7 +16,7 @@ fn draw_wrapped_text (
     mut current_y: f64,
     page_width: f64,
     line_height: f64,
-) -> (f64,PDFLayerReference) {
+) -> (f64,PdfLayerReference) {
     let mut current_x: f64 = start_x;
 
     for line in text.split('\n'){
@@ -67,10 +65,9 @@ fn add_spacing(
     let mut new_y: f64 = current_y - line_height * multiplier;
 
     if new_y < MARGIN_BOTTOM {
-        let (page,layer) = doc.add_page(Mm(210.0), Mm(297.0), "Layer 1");
-        let new_layer = doc.get_page(page).get_layer(layer);
-
-        new_layer = MARGIN_TOP;
+        let (page,new_layer_id) = doc.add_page(Mm(210.0), Mm(PAGE_HEIGHT), "Layer 1");
+        layer = doc.get_page(page).get_layer(new_layer_id);
+        new_y = MARGIN_TOP;
     }
     //no new page needed, return current layer
     ( new_y, layer)
@@ -94,22 +91,22 @@ pub fn export_summary_to_pdf(
     let line_height: f64 = 14.0; // line height in mm
 
     //different fonts for title, sections and bullet text(might add other fonts later)
-    let font: str = doc.add_builtin_font(BuiltinFont::Helvetica)?;
-    let font_bold: str = doc.add_builtin_font(BuiltinFont::HelveticaBold)?;
+    let font: IndirectFontRef = doc.add_builtin_font(BuiltinFont::Helvetica)?;
+    let font_bold: IndirectFontRef = doc.add_builtin_font(BuiltinFont::HelveticaBold)?;
 
     //Title
     layer.use_text("Lecture Summary", title_font_size, Mm(start_x), Mm(current_y), &font_bold);
-    let (y,1) = add_spacing(&doc,layer, current_y, line_height, 2.0);
+    let (y,layer) = add_spacing(&doc,layer, current_y, line_height, 2.0);
     current_y = y;
     layer = 1;
 
     //Keywords Section
     layer.use_text("Keywords:", section_font_size, Mm(start_x), Mm(current_y), &font_bold);
-    let (y,1) = add_spacing(&doc, layer, current_y, line_height, 1.0);
+    let (y,layer) = add_spacing(&doc, layer, current_y, line_height, 1.0);
     current_y = y;
     layer = 1;
     for kw in keywords {
-        let (y,1) = draw_wrapped_text(
+        let (y,layer) = draw_wrapped_text(
             &doc,
             layer,
             &format!("• {}", kw),
@@ -123,16 +120,16 @@ pub fn export_summary_to_pdf(
         current_y = y;
         layer = 1;
     }
-    let (y,1) =add_spacing(&doc, layer, current_y, line_height, 2.0);
+    let (y,layer) =add_spacing(&doc, layer, current_y, line_height, 2.0);
     current_y = y;
     layer = 1;
 
     //Summary section
     layer.use_text("Summary:", section_font_size, Mm(start_x), Mm(current_y), &font_bold);
-    let (y,1) = add_spacing(&doc, layer, current_y, line_height, 1.0);
+    let (y,layer) = add_spacing(&doc, layer, current_y, line_height, 1.0);
     current_y = y;
     layer = 1;
-    let (y,1) = draw_wrapped_text(
+    let (y,layer) = draw_wrapped_text(
         &doc,
         layer,
         summary,
@@ -145,13 +142,13 @@ pub fn export_summary_to_pdf(
     );
     current_y = y;
     layer = 1;
-    let (y,1) = add_spacing(&doc, layer, current_y, line_height, 2.0);
+    let (y,layer) = add_spacing(&doc, layer, current_y, line_height, 2.0);
     current_y = y;
     layer = 1;
 
     //Resources Section
     layer.use_text("Resources:", section_font_size, Mm(start_x), Mm(current_y), &font_bold);
-    let (y,1) = add_spacing(&doc, layer, current_y, line_height, 1.0);
+    let (y,layer) = add_spacing(&doc, layer, current_y, line_height, 1.0);
     current_y = y;
     layer = 1;
 
