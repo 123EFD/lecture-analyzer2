@@ -98,13 +98,13 @@ pub fn export_summary_to_pdf(
     layer.use_text("Lecture Summary", title_font_size, Mm(start_x), Mm(current_y), &font_bold);
     let (y,layer) = add_spacing(&doc,layer, current_y, line_height, 2.0);
     current_y = y;
-    layer = 1;
+    layer = layer;
 
     //Keywords Section
     layer.use_text("Keywords:", section_font_size, Mm(start_x), Mm(current_y), &font_bold);
     let (y,layer) = add_spacing(&doc, layer, current_y, line_height, 1.0);
     current_y = y;
-    layer = 1;
+    layer = layer;
     for kw in keywords {
         let (y,layer) = draw_wrapped_text(
             &doc,
@@ -118,17 +118,17 @@ pub fn export_summary_to_pdf(
             line_height,
         );
         current_y = y;
-        layer = 1;
+        layer = layer;
     }
     let (y,layer) =add_spacing(&doc, layer, current_y, line_height, 2.0);
     current_y = y;
-    layer = 1;
+    layer = layer;
 
     //Summary section
     layer.use_text("Summary:", section_font_size, Mm(start_x), Mm(current_y), &font_bold);
     let (y,layer) = add_spacing(&doc, layer, current_y, line_height, 1.0);
     current_y = y;
-    layer = 1;
+    layer = layer;
     let (y,layer) = draw_wrapped_text(
         &doc,
         layer,
@@ -141,16 +141,16 @@ pub fn export_summary_to_pdf(
         line_height,
     );
     current_y = y;
-    layer = 1;
+    layer = layer;
     let (y,layer) = add_spacing(&doc, layer, current_y, line_height, 2.0);
     current_y = y;
-    layer = 1;
+    layer = layer;
 
     //Resources Section
     layer.use_text("Resources:", section_font_size, Mm(start_x), Mm(current_y), &font_bold);
     let (y,layer) = add_spacing(&doc, layer, current_y, line_height, 1.0);
     current_y = y;
-    layer = 1;
+    layer = layer;
 
     for r in resources {
         draw_wrapped_text(
@@ -165,7 +165,7 @@ pub fn export_summary_to_pdf(
             line_height,
         );
         current_y = y;
-        layer = 1;
+        layer = layer;
     }
     
     //Save PDF

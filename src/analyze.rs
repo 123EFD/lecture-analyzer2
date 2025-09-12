@@ -110,7 +110,7 @@ pub fn extract_summary(text:&str, num_sentences: usize) -> Vec<String> {
 
     //Initialize sentence scores
     let mut scores:Vec<f32> = vec![1.0; sentences_storage.len()];
-    let mut new_scores:Vec<f32> = vec![1.0;senteces_storage.len()];
+    let mut new_scores:Vec<f32> = vec![1.0;sentences_storage.len()];
 
     //Iterative scoring (UPDATE SCORES)
     for _ in 0..20 {
