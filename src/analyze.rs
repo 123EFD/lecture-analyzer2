@@ -52,7 +52,7 @@ pub fn extract_keywords(text:&str) -> Vec<String> {
 
     let mut word_score: HashMap<String,f64>=HashMap::new();
     for (word, &freq) in &word_freq {
-        let degree: Option<&usize> = word_degree.get(word).unwrap_or(&0); 
+        let degree: &usize = word_degree.get(word).unwrap_or(&0); 
         word_score.insert(word.clone(), (*degree as f64 + freq as f64) / freq as f64);
     }
 
@@ -60,11 +60,11 @@ pub fn extract_keywords(text:&str) -> Vec<String> {
     let mut phrase_score: HashMap<String, f32> = HashMap::new();
     for phrase in &candidates_phrases {
         let words: Vec<&str> = phrase.split_whitespace().collect();
-        let mut score: f32 = words
+        let score: f64 = words
             .iter()
             .map(|w| word_score.get(&w.to_string()).unwrap_or(&0.0))
             .sum();
-        phrase_score.insert(phrase.clone(), score);
+        phrase_score.insert(phrase.clone(), score as f32);
     }
 
     //Sort and return top N phrases/keywords
@@ -86,11 +86,11 @@ pub fn extract_keywords(text:&str) -> Vec<String> {
     fn sentence_similarity(s1:&str, s2:&str) -> f32 {
         let set1: HashSet<&str> = s1.split_whitespace().collect();
         let set2: HashSet<&str> = s2.split_whitespace().collect();
-        let common: HashSet<&&str> = set1.intersection(&set2).count() as f32;
-        if common.is_empty() {
+        let common:usize = set1.intersection(&set2).count() ;
+        if common == 0 {
             0.0
         } else {
-            (common.len() as f32) / ((set1.len() + set2.len()) as f32 / 2.0)
+            (common as f32) / ((set1.len() + set2.len()) as f32 / 2.0)
         }
     }
 
@@ -138,7 +138,7 @@ pub fn extract_summary(text:&str, num_sentences: usize) -> Vec<String> {
     indexed
         .iter()
         .take(num_sentences)
-        .map(|(i, _)| sentences_storage[i].clone())
+        .map(|(i, _)| sentences_storage[*i].clone())
         .collect()
 }
 
