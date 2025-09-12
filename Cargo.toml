@@ -5,31 +5,20 @@ edition = "2024"
 
 [dependencies]
 clap = { version = "4.5.4", features = ["derive"] }
-pdf-extract = "0.6"           # simple PDF text extraction (wrapper around poppler-utils)
-lopdf = "0.31"                # alternative: low-level PDF parsing
+pdf-extract = "0.6"           
+lopdf = "0.31"               
 serde = { version = "1.0.202", features = ["derive"] }
 serde_json = "1.0.117"
 tempfile = "3.10.1"
 which = "6.0.1"
-
-# Natural language processing
-regex = "1.10.4"                # for cleaning text / splitting
-lazy_static = "1.5"           # for precompiled regex patterns
-stopwords = "0.1.1"             # common stopword lists (for RAKE)
-
-# Graph + algorithms (for TextRank)
-petgraph = "0.6"              # graph library for TextRank
-
-# Exporting to PDF
-printpdf = "0.4.0"              # create structured PDFs with formatting
-# OR: genpdf = "0.8"           # easier API if you want simple text PDFs
-
-# Utilities
-reqwest = { version = "0.12.4", features = ["blocking", "json"] } # fetch reference links (blocking for CLI)
-scraper = "0.19"              # HTML parsing for utils.rs if you scrape links
-anyhow = "1.0.86"                # error handling
-thiserror = "1.0"             # custom error types
-
-# Optional: logging
+regex = "1.10.4"                
+lazy_static = "1.4.0"           
+stopwords = "0.1.1"            
+petgraph = "0.6"              
+printpdf = "0.4.1"              
+reqwest = { version = "0.12.4", features = ["blocking", "json"] } 
+scraper = "0.19"             
+anyhow = "1.0.86"                
+thiserror = "1.0"            
 log = "0.4"
 env_logger = "0.11"

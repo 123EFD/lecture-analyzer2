@@ -5,7 +5,11 @@ mod analyze;
 mod export;
 mod pdf;
 
+/*customize command-line help and metadata for CLI tool -> long-about is for detailed description
+run with --help/-h/--version, this will show the below info*/
+
 #[derive(Parser)]
+#[command(author, version, about = "Analyze lecture PDFs to extract keywords, summaries, and suggest resources", long_about = None)]
 struct Cli {
     #[command(subcommand)]
     command: Commands,
