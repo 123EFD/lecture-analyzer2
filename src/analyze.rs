@@ -1,6 +1,6 @@
 use stopwords::{Language, Stopwords, NLTK};
-use regex::Regex;
 use std::collections::{HashMap, HashSet};
+use fancy_regex::Regex;
 
 pub fn extract_keywords(text:&str) -> Vec<String> {
     //1.Load Stopwords
@@ -77,7 +77,7 @@ pub fn extract_keywords(text:&str) -> Vec<String> {
     fn split_text_into_sentences(text:&str) -> Vec<String> {
         let re = Regex::new(r"(?m)(?<!\w\.\w.)(?<![A-Z][a-z]\.)(?<=\.|\?)\s").unwrap();
         re.split(text)
-            .map(|s| s.trim().to_string())
+            .map(|res|res.expect("Valid regex split").trim().to_string())
             .filter(|s| !s.is_empty())
             .collect()
     }
@@ -140,5 +140,6 @@ pub fn extract_summary(text:&str, num_sentences: usize) -> Vec<String> {
         .take(num_sentences)
         .map(|(i, _)| sentences_storage[*i].clone())
         .collect()
+    
 }
 

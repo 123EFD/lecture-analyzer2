@@ -94,7 +94,7 @@ pub fn export_summary_to_pdf(
     summary: &str,
     keywords:&[String],
     resources:&[String],
-) ->Result<(), Box<dyn std::error::Error>> {
+) ->Result<(), Box<dyn std::error::Error + Send + Sync>> {
     let (doc, page1, layer1) = PdfDocument::new("Lecture Summary", Mm(210.0), Mm(PAGE_HEIGHT), "Layer 1"); // A4 size
     let mut layer = doc.get_page(page1).get_layer(layer1);
 

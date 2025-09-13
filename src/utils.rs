@@ -3,7 +3,7 @@ use reqwest::blocking::get;
 use scraper::{Html, Selector};
 
 //Fetch real reference links for keywords (Wikipedia links as placeholders)
-pub fn suggest_resources(keywords: &[String]) -> Result<Vec<String>, Box<dyn std::error::Error>> {
+pub fn suggest_resources(keywords: &[String]) -> Result<Vec<String>, Box<dyn std::error::Error + Send + Sync>> {
 
     // Placeholder: In a real implementation, this might query an API or database
     let mut resources = Vec::new();
