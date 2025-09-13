@@ -119,8 +119,11 @@ pub fn extract_summary(text:&str, num_sentences: usize) -> Vec<String> {
             //Sum of weighted scores from other sentences
             for j in 0..sentences_storage.len() {
                 if i != j {
+                    let sim_sum:f32 = similarity[j].iter().sum::<f32>();
+                    if sim_sum != 0.0 {
                     //weighted by similarity(i,j)
-                    sum += similarity[j][i] * scores[j] / similarity[j].iter().sum::<f32>();
+                    sum += similarity[j][i] * scores[j] / sim_sum;
+                    } 
                 }
             }
             new_scores[i] = 0.15 + 0.85 * sum; //Damping factor
