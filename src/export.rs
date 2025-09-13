@@ -112,7 +112,7 @@ pub fn export_summary_to_pdf(
     let font_bold_pdf: IndirectFontRef = doc.add_builtin_font(BuiltinFont::HelveticaBold)?;
 
     //Load TTF font for rusttype
-    let font_data = std::fs::read("fonts/Helvetica")?;
+    let font_data: Vec<u8> = std::fs::read("fonts/Helvetica/Helvetica.ttf")?; 
     let font_rusttype = Font::try_from_vec(font_data).unwrap();
 
     //Title
