@@ -2,6 +2,7 @@ use printpdf::*;
 use rusttype::{Font, Scale, point};
 use std::fs::File;
 use ::std::io::BufWriter;
+use std::path::{Path, PathBuf};
 
 
 const PAGE_HEIGHT:f64 = 297.0;
@@ -191,9 +192,12 @@ pub fn export_summary_to_pdf(
         layer = layer_;
     }
     
-    //Save PDF
-    let file: File = File::create(output_path)?;
-    let mut buf_writer = BufWriter::new(file);
+    //Save PDF(Ensure output path is user/project directory)
+    let safe_dir: &Path = Path::new("output");
+    std::fs::create_dir_all(safe_dir)?; //create output directory if not exists
+    let safe_path: PathBuf = safe_dir.join(output_path);
+    let file: File = File::create(&safe_path)?;
+    let mut buf_writer: BufWriter<File> = BufWriter::new(file);
     doc.save(&mut buf_writer)?;
     Ok(())
 

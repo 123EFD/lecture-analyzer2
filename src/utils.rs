@@ -9,15 +9,33 @@ pub fn suggest_resources(keywords: &[String]) -> Result<Vec<String>, Box<dyn std
     let mut resources = Vec::new();
 
     for kw in keywords {
+    //Validate keyword:Skip if too long or contains obvious bad char.
+    if kw.len() > 50 || kw.contains('/') || kw.contains('?') || kw.trim().is_empty() {
+        continue;
+    }
         let url = format!("https://en.wikipedia.org/wiki/{}", kw.replace(" ", "_"));
 
-        //Fetch to page
-        let resp: String = get(&url)?.text()?;
+        // Fetch the page
+        let resp: std::result::Result<String, reqwest::Error> = match get(&url) {
+            Ok(r) => r.text(),
+            Err(e) => {
+                eprintln!("Failed to fetch {}: {}", url, e);
+                continue;
+            }
+        };
 
-        let document = Html::parse_document(&resp);
+        let resp = match resp {
+            Ok(text) => text,
+            Err(e) => {
+                eprintln!("Failed to read response text from {}: {}", url, e);
+                continue;
+            }
+        };
+
+        let document: Html = Html::parse_document(&resp);
 
         //select the first few internal links 
-        let selector = Selector::parse("#mw-content-text a[href]").unwrap();
+        let selector: Selector = Selector::parse("#mw-content-text a[href]").unwrap();
 
         for element in document.select(&selector).take(5) {
             if let Some(link) = element.value().attr("href") {
