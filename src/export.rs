@@ -1,74 +1,40 @@
 use printpdf::*;
-use rusttype::{Font, Scale, point};
 use std::fs::File;
 use ::std::io::BufWriter;
 use std::path::{Path, PathBuf};
+use anyhow::Result;
+use textwrap::wrap;
 
 
 const PAGE_HEIGHT:f64 = 297.0;
-const PAGE_WIDTH:f64 = 170.0;
 const MARGIN_TOP:f64 = 277.0;
 const MARGIN_BOTTOM:f64 = 20.0;
 
-//only rusttype have measure text width/metrics
-fn word_width_mm(word:&str, font:&Font, font_size:f64) -> f64 {
-    let scale = Scale::uniform(font_size as f32); //creates scaling object for the font size 
-    let width_px:f32 = font //split word into glyphs at the desired font size
-        .layout(word, scale, point(0.0, 0.0))
-        .map(|g|g.unpositioned().h_metrics().advance_width) //gives horizontal space the glyph occupies (in pixels)
-        .sum();
-    // Assume 1pt = 1.333px, 1mm = 2.83465pt
-    let pt: f64 = width_px as f64 / 1.333;
-    pt / 2.83465 //convert pt to mm
-}
-
+//designed for long text blocks(summaries/paragraphs) ->wrap words to next line when reaching page margin
 fn draw_wrapped_text (
     doc: &PdfDocumentReference,
     mut layer: PdfLayerReference,
     text: &str,
     font_pdf: &IndirectFontRef,
-    font_rusttype:&Font,
     font_size: f64,
     start_x: f64,
     mut current_y: f64,
-    page_width: f64,
+    max_chars_per_line: usize,
     line_height: f64,
 ) -> (f64,PdfLayerReference) {
-    let mut current_x: f64 = start_x;
+    let wrapped_lines: Vec<std::borrow::Cow<'_, str>> = wrap(text, max_chars_per_line);
 
-    for line in text.split('\n'){
-        for word in line.split_whitespace() {
-            let word_width: f64 = word_width_mm(word,font_rusttype, font_size); 
-            
-            // check if word fits in current line
-            if current_x + word_width > start_x + page_width  {
-                current_x = start_x;
-                current_y -= line_height;
-            }
+    for line in wrapped_lines{
+        layer.use_text(line, font_size, Mm(start_x), Mm(current_y), font_pdf);
+        current_y -= line_height;
 
             //page break
             if current_y < MARGIN_BOTTOM {
                 let (page, new_layer_id) = doc.add_page(Mm(210.0), Mm(PAGE_HEIGHT), "Layer 1");
                 layer = doc.get_page(page).get_layer(new_layer_id);
                 current_y= MARGIN_TOP;
-                current_x = start_x;
             }
-
-            layer.use_text(word, font_size, Mm(current_x), Mm(current_y), font_pdf);
-            // add space width
-            let space_width: f64 = word_width_mm(" ", font_rusttype, font_size);
-            current_x += word_width + space_width;
         }
-        current_x = start_x;
-        current_y -= line_height;
-        //page break after a line
-        if current_y < MARGIN_BOTTOM {
-            let (page, new_layer_id) = doc.add_page(Mm(210.0), Mm(PAGE_HEIGHT), "Layer 1");
-            layer = doc.get_page(page).get_layer(new_layer_id);
-            current_y= MARGIN_TOP;
-        }
-    }
-
     (current_y,layer) //return the final y position after drawing
 }
 
@@ -108,12 +74,8 @@ pub fn export_summary_to_pdf(
     let line_height: f64 = 14.0; // line height in mm
 
     //different fonts for title, sections and bullet text(might add other fonts later)
-    let font_pdf: IndirectFontRef = doc.add_builtin_font(BuiltinFont::Helvetica)?;
-    let font_bold_pdf: IndirectFontRef = doc.add_builtin_font(BuiltinFont::HelveticaBold)?;
-
-    //Load TTF font for rusttype
-    let font_data: Vec<u8> = std::fs::read("fonts/Helvetica/Helvetica.ttf")?; 
-    let font_rusttype = Font::try_from_vec(font_data).unwrap();
+    let font_pdf: IndirectFontRef = doc.add_external_font(File::open("fonts/roboto/Roboto-Regular.ttf")?)?;
+    let font_bold_pdf: IndirectFontRef = doc.add_external_font(File::open("fonts/roboto/Roboto-Bold.ttf")?)?;
 
     //Title
     layer.use_text("Lecture Summary", title_font_size, Mm(start_x), Mm(current_y), &font_bold_pdf);
@@ -126,21 +88,18 @@ pub fn export_summary_to_pdf(
     let (y,layer_) = add_spacing(&doc, layer, current_y, line_height, 1.0);
     current_y = y;
     layer = layer_;
+
+    //iterate over keyword and print as a separate bullet point
     for kw in keywords {
-        let (y,layer_) = draw_wrapped_text(
-            &doc,
-            layer,
-            &format!("• {}", kw),
-            &font_pdf,
-            &font_rusttype,
-            bullet_font_size,
-            start_x + 5.0,
-            current_y,
-            PAGE_WIDTH,
-            line_height,
-        );
-        current_y = y;
-        layer = layer_;
+        let bullet: String = format!("• {}", kw);
+        layer.use_text(&bullet, bullet_font_size, Mm(start_x + 5.0), Mm(current_y), &font_pdf);
+        current_y -= line_height;
+        //Page break for keywords
+        if current_y < MARGIN_BOTTOM {
+            let (page, new_layer_id) = doc.add_page(Mm(210.0), Mm(PAGE_HEIGHT), "Layer 1");
+            layer = doc.get_page(page).get_layer(new_layer_id);
+            current_y = MARGIN_TOP;
+        }
     }
     let (y,layer_) =add_spacing(&doc, layer, current_y, line_height, 2.0);
     current_y = y;
@@ -156,11 +115,10 @@ pub fn export_summary_to_pdf(
         layer,
         summary,
         &font_pdf,
-        &font_rusttype,
         bullet_font_size,
         start_x + 5.0,
         current_y,
-        PAGE_WIDTH,
+        80,
         line_height,
     );
     current_y = y;
@@ -181,11 +139,10 @@ pub fn export_summary_to_pdf(
             layer,
             &format!("• {}", r),
             &font_pdf,
-            &font_rusttype,
             bullet_font_size,
             start_x + 5.0,
             current_y,
-            PAGE_WIDTH,
+            80,
             line_height,
         );
         current_y = y;
