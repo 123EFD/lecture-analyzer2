@@ -1,16 +1,54 @@
-use stopwords::{Language, Stopwords, NLTK};
 use std::collections::{HashMap, HashSet};
-use fancy_regex::Regex;
 
 pub fn extract_keywords(text:&str) -> Vec<String> {
-    //1.Load Stopwords
-    let stopwords: HashSet<String> = NLTK::stopwords(Language::English)
-        .unwrap()
-        .into_iter()
-        .map(|s| s.to_lowercase().to_string())
-        .collect();
+    //1.Load Stopwords (basic keyword extraction)
+    let stopwords: HashSet<&str> = [
+        "a","about","above","after","again","against","all","am","an","and","any","are",
+        "aren't","as","at","be","because","been","before","being","below","between","both",
+        "but","by","can't","cannot","could","couldn't","did","didn't","do","does","doesn't",
+        "doing","don't","down","during","each","few","for","from","further","had","hadn't","has",
+        "hasn't","have","haven't","having","he","he'd","he'll","he's","her","here","here's","hers",
+        "herself","him","himself","his","how","how's","i","i'd","i'll","i'm","i've","if","in","into","is",
+        "isn't","it","it's","its","itself","just","ll","may","me","mightn't","more","most","mustn't","my",
+        "myself","needn't","no","nor","not","now","of","off","on","once","only","or","other","our","ours",
+        "ourselves","out","over","own","re","s","same","shan't","she","she'd","she'll","she's","should",
+        "shouldn't","so","some","such","t","than","that","that's","the","their","theirs","them","themselves","then",
+        "there","there's","these","they","they'd","they'll","they're","they've","this","those","through","to","too","under","until",
+        "up","ve","very","was","wasn't","we","we'd","we'll","we're","we've","were","weren't","what","what's","when","when's",
+        "where","where's","which","while","who","who's","whom","why","why's","will","with","won't","would","wouldn't","y","you","you'd","you'll",
+        "you're","you've","your","yours","yourself","yourselves"
+    ].iter().cloned().collect();
 
-    //2. Split text into candidates_phrases from stopwords and punctuations 
+    let mut freq: HashMap<String, usize> = HashMap::new();
+
+    //splite text into words and count frequency
+    for word in text
+        .split(|c:char|!c.is_alphabetic())
+        .map(|w: &str| w.to_lowercase())
+        .filter(|w: &String|w.len() > 2 && w.len() < 20 && !stopwords.contains(w.as_str()))
+    {
+        *freq.entry(word).or_insert(0) += 1;
+    }
+
+    //Get top 10 most frequency keywords
+    let mut keywords:Vec<(String,usize)> = freq.into_iter().collect();
+    keywords.sort_by(|a, b| b.1.cmp(&a.1)); 
+    keywords.into_iter().take(10).map(|(w, _)| w).collect()
+}
+
+pub fn extract_summary(text:&str, num_sentences: usize) -> Vec<String> {
+    //Simple sentence splitting by '.'
+    let sentences: Vec<&str> = text.split('.').collect();
+    let mut results: Vec<String> = Vec::new();
+    for sentence in sentences.iter().take(num_sentences) {
+        if !sentence.trim().is_empty() {
+            results.push(sentence.trim().to_string());
+        }
+    }
+    results
+}
+
+    /*2. Split text into candidates_phrases from stopwords and punctuations 
     let re = Regex::new(r#"[.,;!?()\[\]"\n]"#).unwrap();
     let cleaned_text = re.replace_all(text, ""); 
 
@@ -93,22 +131,23 @@ pub fn extract_keywords(text:&str) -> Vec<String> {
             (common as f32) / ((set1.len() + set2.len()) as f32 / 2.0)
         }
     }
+    */
 
     //Textrank for sentence extraction
-pub fn extract_summary(text:&str, num_sentences: usize) -> Vec<String> {
-    let sentences_storage: Vec<String> = split_text_into_sentences(text);
-
-    //Similariy matrix
+    /*Similariy matrix
     let mut similarity:Vec<Vec<f32>>=vec![vec![0.0; sentences_storage.len()]; sentences_storage.len()];
     for i in 0..sentences_storage.len() {
         for j in 0..sentences_storage.len() {
             if i != j {
                 similarity[i][j] = sentence_similarity(&sentences_storage[i], &sentences_storage[j]);
-            }
-        }
-    }
+    */
 
-    //Initialize sentence scores
+
+
+    
+            
+
+    /*Initialize sentence scores
     let mut scores:Vec<f32> = vec![1.0; sentences_storage.len()];
     let mut new_scores:Vec<f32> = vec![1.0;sentences_storage.len()];
 
@@ -145,4 +184,5 @@ pub fn extract_summary(text:&str, num_sentences: usize) -> Vec<String> {
         .collect()
     
 }
+*/
 

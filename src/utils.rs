@@ -9,10 +9,14 @@ pub fn suggest_resources(keywords: &[String]) -> Result<Vec<String>, Box<dyn std
     let mut resources = Vec::new();
 
     for kw in keywords {
-    //Validate keyword:Skip if too long or contains obvious bad char.
-    if kw.len() > 50 || kw.contains('/') || kw.contains('?') || kw.trim().is_empty() {
-        continue;
-    }
+        println!("Keyword before filtering: {}", kw);
+
+        //Validate keyword:Skip if too long or contains obvious bad char.
+        if kw.len() > 50 || kw.contains('/') || kw.contains('?') || kw.trim().is_empty() {
+            continue;
+        }
+        println!("Keyword before filtering: {}", kw);
+
         let url = format!("https://en.wikipedia.org/wiki/{}", kw.replace(" ", "_"));
 
         // Fetch the page
@@ -41,11 +45,13 @@ pub fn suggest_resources(keywords: &[String]) -> Result<Vec<String>, Box<dyn std
             if let Some(link) = element.value().attr("href") {
                 if link.starts_with("/wiki/") && !link.contains(":") {
                     let full_link = format!("https://en.wikipedia.org{}", link);
+                    println!("Adding resource URL: {}", full_link); 
                     resources.push(full_link);
                 }
             }
         }
         resources.push(url); //add the main wiki page as well
+        
     }
     Ok(resources)
     

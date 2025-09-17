@@ -148,6 +148,8 @@ pub fn export_summary_to_pdf(
         current_y = y;
         layer = layer_;
     }
+
+
     
     //Save PDF(Ensure output path is user/project directory)
     let safe_dir: &Path = Path::new("output");

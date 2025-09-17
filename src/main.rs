@@ -51,6 +51,10 @@ fn main() ->Result<(), Box<dyn std::error::Error + Send + Sync>> {
             let keywords:Vec<String>  = analyze::extract_keywords(&lecture_text);
             let summary: Vec<String> = analyze::extract_summary(&lecture_text, summary_sentences);
             let resources: Vec<String> = utils::suggest_resources(&keywords)?;
+            println!("Exporting resources, count: {}", resources.len());
+            for r in &resources {
+                println!("Resource: {}", r);
+            }
             export::export_summary_to_pdf(&export, &summary.join("\n"), &keywords, &resources)?;
             println!("Analysis complete. Summary exported to {}", export);
         }
