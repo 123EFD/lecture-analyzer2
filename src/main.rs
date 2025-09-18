@@ -52,7 +52,7 @@ fn main() ->Result<(), Box<dyn std::error::Error + Send + Sync>> {
         Commands::Analyze { input, export, summary_sentences } => {
             let lecture_text:String = pdf::extract_text(&input)?;
             let keywords:Vec<String>  = analyze::extract_keywords_ner(&lecture_text);
-            let summary: Vec<String> = analyze::extract_summary(&lecture_text, summary_sentences);
+            let summary: Vec<String> = analyze::extract_summary(&lecture_text, summary_sentences,&keywords);
             let resources: Vec<String> = utils::suggest_resources(&keywords)?;
             println!("Exporting resources, count: {}", resources.len());
             for r in &resources {
@@ -71,7 +71,8 @@ fn main() ->Result<(), Box<dyn std::error::Error + Send + Sync>> {
         }
         Commands::Summary { input, summary_sentences } => {
             let lecture_text:String = pdf::extract_text(&input)?;
-            let summary: Vec<String> = analyze::extract_summary(&lecture_text, summary_sentences);
+            let keywords:Vec<String>  = analyze::extract_keywords_ner(&lecture_text);
+            let summary: Vec<String> = analyze::extract_summary(&lecture_text, summary_sentences,&keywords);
             println!("Extracted Summary:");
             for sentence in summary {
                 println!("- {}", sentence);

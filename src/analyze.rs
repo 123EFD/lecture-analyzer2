@@ -58,16 +58,41 @@ pub fn extract_keywords_ner(text:&str) -> Vec<String> {
     keywords.into_iter().take(10).map(|(w, _)| w).collect()
 }
 
-pub fn extract_summary(text:&str, num_sentences: usize) -> Vec<String> {
+pub fn extract_summary(text:&str, num_sentences: usize, keywords:&[String]) -> Vec<String> {
     //Simple sentence splitting by '.'
     let sentences: Vec<&str> = text.split('.').collect();
-    let mut results: Vec<String> = Vec::new();
-    for sentence in sentences.iter().take(num_sentences) {
-        if !sentence.trim().is_empty() {
-            results.push(sentence.trim().to_string());
-        }
-    }
-    results
+
+    //Filter out irrelevant sentences
+    let filtered:Vec<&str> = sentences
+        .iter()
+        .filter(|s| {
+            let s: String = s.trim().to_lowercase();
+            //skip sentences with legalcopyright/resource words or URLS, or too short
+            !(s.contains("copyright") ||
+              s.contains("right reserved") ||
+              s.contains("legal") ||
+              s.contains("resources") ||
+              s.contains("published") ||
+              s.contains("www") ||
+              s.contains("http") ||
+              s.len() < 20)
+            })
+        .cloned()
+        .collect();
+
+    //ranked sentences based on keyword presence
+    let mut scored:Vec<(&str, usize)> = filtered
+        .iter()
+        .map(|&sentence| {
+            let score = keywords.iter().filter(|kw| sentence.contains(&kw.to_lowercase())).count();
+            (sentence, score)
+        })
+        .collect();
+
+    //sort by score descending, then take top N
+    scored.sort_by(|a,b|b.1.cmp(&a.1));
+    scored.iter().take(num_sentences).map(|(s,_)| s.trim().to_string()).collect()
+    
 }
 
     /*2. Split text into candidates_phrases from stopwords and punctuations 
