@@ -32,6 +32,9 @@ enum Commands {
         #[arg(long, default_value_t = 5)]
         summary_sentences: usize,
     },
+    Entities {
+        input:String,
+    },
     Resources {
         input:String,
     }
@@ -48,7 +51,7 @@ fn main() ->Result<(), Box<dyn std::error::Error + Send + Sync>> {
     match cli.command {
         Commands::Analyze { input, export, summary_sentences } => {
             let lecture_text:String = pdf::extract_text(&input)?;
-            let keywords:Vec<String>  = analyze::extract_keywords(&lecture_text);
+            let keywords:Vec<String>  = analyze::extract_keywords_ner(&lecture_text);
             let summary: Vec<String> = analyze::extract_summary(&lecture_text, summary_sentences);
             let resources: Vec<String> = utils::suggest_resources(&keywords)?;
             println!("Exporting resources, count: {}", resources.len());
@@ -60,7 +63,7 @@ fn main() ->Result<(), Box<dyn std::error::Error + Send + Sync>> {
         }
         Commands::Keywords { input } => {
             let lecture_text:String = pdf::extract_text(&input)?;
-            let keywords:Vec<String>  = analyze::extract_keywords(&lecture_text);
+            let keywords:Vec<String>  = analyze::extract_keywords_ner(&lecture_text);
             println!("Extracted Keywords:");
             for keyword in keywords {
                 println!("- {}", keyword);
@@ -76,12 +79,20 @@ fn main() ->Result<(), Box<dyn std::error::Error + Send + Sync>> {
         }
         Commands::Resources { input } => {
             let lecture_text:String = pdf::extract_text(&input)?;
-            let keywords:Vec<String>  = analyze::extract_keywords(&lecture_text);
+            let keywords:Vec<String>  = analyze::extract_keywords_ner(&lecture_text);
             let resources: Vec<String> = utils::suggest_resources(&keywords)?;
             println!("Suggested Resources:");
             for resource in resources {
                 println!("- {}", resource);
             }
+        }
+        Commands::Entities { input } => {
+            let lecture_text:String = pdf::extract_text(&input)?;
+            let entities: Vec<rust_bert::pipelines::ner::Entity> = analyze::extract_entities_ner(&lecture_text);
+            println!("Extracted Entities:");
+            for entity in entities {
+                println!("Word: {}, Label: {}, Score: {}", entity.word, entity.label, entity.score);
+            } 
         }
     }
 

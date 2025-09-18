@@ -1,7 +1,29 @@
+use rust_bert::pipelines::ner::{NERModel, Entity};
 use std::collections::{HashMap, HashSet};
 
-pub fn extract_keywords(text:&str) -> Vec<String> {
+//extract named entity details: word, label, score etc.
+pub fn extract_entities_ner(text:&str) -> Vec<Entity> {
+    let ner_model: NERModel = NERModel::new(Default::default()).unwrap();
+    let entities: Vec<Vec<rust_bert::pipelines::ner::Entity>> = ner_model.predict(&[text]);
+    //Return as Vec<Entity>
+    entities.get(0).cloned().unwrap_or_else(Vec::new)
+}
+
+pub fn extract_keywords_ner(text:&str) -> Vec<String> {
+    let ner_model: NERModel = NERModel::new(Default::default()).unwrap();
+    let entities: Vec<Vec<rust_bert::pipelines::ner::Entity>> = ner_model.predict(&[text]);
+    let mut keywords: Vec<String> = Vec::new();
+    let mut seen: HashSet<String> = std::collections::HashSet::new();
+    for entity in entities.get(0).unwrap_or(&Vec::new()) {
+        if seen.insert(entity.word.clone()) {
+            keywords.push(entity.word.clone());
+        }
+    }
+    keywords
+}
+    #[allow(dead_code)]
     //1.Load Stopwords (basic keyword extraction)
+    pub fn extract_keywords(text:&str) -> Vec<String> {
     let stopwords: HashSet<&str> = [
         "a","about","above","after","again","against","all","am","an","and","any","are",
         "aren't","as","at","be","because","been","before","being","below","between","both",
