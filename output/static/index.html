@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Lecture Summarizer</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <h1>Lecture Summarizer</h1>
+    <div class="dropdown-section"
+         id="drop-area"
+         ondrop="handleDrop(event)"
+         ondragover="event.preventDefault()">
+        <p>Drag & drop your lecture notes here, or 
+            <label for ="pdf-input" class="file-label">browse</label>
+        </p>
+        <input type="file" id="pdf-input" accept="application/pdf" style="display:none" onchange="handleFile(event)">
+        <div id="file-name"></div>
+    </div>
+    <button id="summarize-btn" onclick="uploadFile()" disabled>Summarize</button>
+    <pre id="summary"></pre>
+    <button id="download-btn" style="display:none;">Download Summary</button>
+    <script src="/static/script.js" defer></script>
+</body>
+    
+
+</html>

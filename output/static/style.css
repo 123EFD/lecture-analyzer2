@@ -1,0 +1,50 @@
+body {
+  background: #18181b;
+  color: #f3f4f6;
+  font-family: system-ui, sans-serif;
+  margin: 0; padding: 0;
+  min-height: 100vh;
+  display: flex; flex-direction: column; align-items: center;
+}
+h1 {
+  color: #60a5fa;
+  margin-top: 2rem;
+}
+.dropdown-section {
+  background: #23232a;
+  border: 2px dashed #60a5fa;
+  border-radius: 10px;
+  padding: 2rem;
+  margin: 2rem 0 1rem 0;
+  width: 300px;
+  text-align: center;
+}
+.file-label {
+  color: #93c5fd;
+  text-decoration: underline;
+  cursor: pointer;
+}
+button {
+  background: #2563eb;
+  color: #f3f4f6;
+  border: none;
+  border-radius: 5px;
+  padding: 0.7em 2em;
+  margin: 1em 0;
+  font-weight: bold;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+button:disabled {
+  background: #444;
+  cursor: not-allowed;
+}
+pre {
+  background: #23232a;
+  padding: 1rem;
+  border-radius: 8px;
+  width: 80vw; max-width: 600px;
+  min-height: 4em;
+  margin: 1em auto;
+  overflow-x: auto;
+}
