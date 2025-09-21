@@ -1,11 +1,13 @@
+#![allow(unused_imports)]
 use clap::{Parser, Subcommand};
 use axum::{
-    extract::Multipart, response::{Html, IntoResponse}, routing::{get, post}, serve::Serve, Json, Router
+    extract::Multipart, response::{Html, IntoResponse}, routing::{get, post},  Json, Router
 };
 use std::net::SocketAddr; //SocketAddr: Represents a socket address (IP + port)
 use tower_http::services::ServeDir; //ServeDir: Lets you serve static files (HTML, CSS, JS)
 use serde::Serialize;
 use::anyhow::Result;
+use axum::Server;
 
 mod utils;
 mod analyze;
@@ -75,7 +77,7 @@ async fn summarize_api(mut multipart: Multipart) -> impl IntoResponse {
             //2. Use your exisitng pipeline
             let lecture_text:String = match pdf::extract_text(temp_path) {
                 Ok(text) => text,
-                Err(e) => return Json(SummaryResponse{
+                Err(_e) => return Json(SummaryResponse{
                     summary: vec!["Faild to extract text".into()],
                     keywords: vec![],
                     resources: vec![],
@@ -90,7 +92,7 @@ async fn summarize_api(mut multipart: Multipart) -> impl IntoResponse {
             };
 
             //cleanup
-            let_  = std::fs::remove_file(temp_path);
+            let _  = std::fs::remove_file(temp_path); //"let _" ignore the result
 
             return Json(SummaryResponse { 
                 summary,
@@ -111,11 +113,22 @@ async fn summarize_api(mut multipart: Multipart) -> impl IntoResponse {
 //Start the Axum web server and defines what to do for each route
 async fn run_server() {
     let static_files: ServeDir = ServeDir::new("./static");
+    //::<()> or : Router<()> when creating your Router if you are not using shared state.
     let app = Router::new()
         .route("/", get(|| async { Html(std::fs::read_to_string("./static/index.html").unwrap()) }))
         .route("/api/summarize", post(summarize_api))
         //Serve static assets like style.css at /static/*
-        .nest_service("/static", static_files);
+        .nest_service("/static", axum::routing::get_service(static_files).handle_error(|_| async { (axum::http::StatusCode::INTERNAL_SERVER_ERROR, "Internal Server Error") }));
+
+    //start service request with app 
+    let addr =  SocketAddr::from(([127,0,0,1], 8080));
+    println!("Server running at http://{}", addr);
+    
+    //create a server that listens on the specified address and serves the app
+    axum::Server::bind(&addr)
+        .serve(app.into_make_service()) //provide client's socket address to handlers
+        .await
+        .unwrap();
 }
 
 //match is use to handle each subcommand variant 

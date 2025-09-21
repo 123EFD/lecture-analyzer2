@@ -28,7 +28,7 @@ async function uploadFile() {
     // interface,contruct key/value pairs (= fields and values) to send (throguh fetch API) form data(files) to server
     const formData = new FormData();
     //append(name,value,filename(optional))
-    formData.appned('file',selectedFile); 
+    formData.append('file',selectedFile); 
 
     const res = await fetch('/api/summarize', {method: 'POST', body: formData});
     const data = await res.json();
