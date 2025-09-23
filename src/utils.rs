@@ -1,9 +1,9 @@
 use anyhow::Result;
-use reqwest::blocking::get;
+use reqwest;
 use scraper::{Html, Selector};
 
 //Fetch real reference links for keywords (Wikipedia links as placeholders)
-pub fn suggest_resources(keywords: &[String]) -> Result<Vec<String>, Box<dyn std::error::Error + Send + Sync>> {
+pub async fn suggest_resources(keywords: &[String]) -> Result<Vec<String>, Box<dyn std::error::Error + Send + Sync>> {
 
     // Placeholder: In a real implementation, this might query an API or database
     let mut resources = Vec::new();
@@ -20,23 +20,22 @@ pub fn suggest_resources(keywords: &[String]) -> Result<Vec<String>, Box<dyn std
         let url = format!("https://en.wikipedia.org/wiki/{}", kw.replace(" ", "_"));
 
         // Fetch the page
-        let resp: std::result::Result<String, reqwest::Error> = match get(&url) {
-            Ok(r) => r.text(),
+        let resp: std::result::Result<String, reqwest::Error> = match reqwest::get(&url).await {
+            Ok(r) => match r.text().await {
+                Ok(text) => Ok(text),
+                Err(e) => {
+                    eprintln!("Failed to read response text from {}: {}", url, e);
+                    continue;
+                }
+            },
             Err(e) => {
                 eprintln!("Failed to fetch {}: {}", url, e);
                 continue;
             }
         };
 
-        let resp = match resp {
-            Ok(text) => text,
-            Err(e) => {
-                eprintln!("Failed to read response text from {}: {}", url, e);
-                continue;
-            }
-        };
 
-        let document: Html = Html::parse_document(&resp);
+        let document: Html = Html::parse_document(resp.as_ref().unwrap());
 
         //select the first few internal links 
         let selector: Selector = Selector::parse("#mw-content-text a[href]").unwrap();

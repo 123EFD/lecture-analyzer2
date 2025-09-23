@@ -1679,6 +1679,7 @@ dependencies = [
  "lazy_static",
  "log",
  "lopdf 0.31.0",
+ "once_cell",
  "pdf-extract",
  "petgraph",
  "printpdf",

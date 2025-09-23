@@ -1,12 +1,18 @@
 #![allow(unused_imports)]
 use clap::{Parser, Subcommand};
 use axum::{
-    extract::Multipart, response::{Html, IntoResponse}, routing::{get, post},  Json, Router
+    extract::{Multipart, Extension},
+    response::{Html, IntoResponse},
+    routing::{get, post},
+    Json, Router,
 };
+use std::sync::Arc;
+use tokio::sync::Mutex;
+use rust_bert::pipelines::{keywords_extraction, ner::NERModel};
 use std::net::SocketAddr; //SocketAddr: Represents a socket address (IP + port)
 use tower_http::services::ServeDir; //ServeDir: Lets you serve static files (HTML, CSS, JS)
 use serde::Serialize;
-use::anyhow::Result;
+use anyhow::Result;
 use axum::Server;
 
 mod utils;
@@ -48,7 +54,10 @@ enum Commands {
         input:String,
     },
     //Start the web server for uploading and summarizing PDFs
-    Serve,
+    Serve {
+        #[arg(long, default_value_t = 8080)]
+        port: u16,
+    },
     //add more subcommand if any 
 }
 
@@ -65,8 +74,8 @@ struct SummaryResponse {
 */
 
 //Handles the logic when a user uploads a PDF (request handler)
-async fn summarize_api(mut multipart: Multipart) -> impl IntoResponse {
-    //1.Extract PDF from multipart form
+async fn summarize_api(Extension(ner_model):Extension<Arc<Mutex<NERModel>>>,mut multipart: Multipart) -> impl IntoResponse {
+    use axum::extract::multipart::Field;
     while let Some(field) = multipart.next_field().await.unwrap() {
         if field.name() == Some("file") {
             let data = field.bytes().await.unwrap();
@@ -77,16 +86,19 @@ async fn summarize_api(mut multipart: Multipart) -> impl IntoResponse {
             //2. Use your exisitng pipeline
             let lecture_text:String = match pdf::extract_text(temp_path) {
                 Ok(text) => text,
-                Err(_e) => return Json(SummaryResponse{
+                Err(_e) => {
+                return Json(SummaryResponse{
                     summary: vec!["Faild to extract text".into()],
                     keywords: vec![],
                     resources: vec![],
-                }),
-            };
-
-            let keywords: Vec<String> = analyze::extract_keywords_ner(&lecture_text);
+                })
+            }
+        };
+        //lock model and pass mutable ref to analyze function
+            let mut model = ner_model.lock().await;
+            let keywords: Vec<String> = analyze::extract_keywords_ner(&mut model, &lecture_text);
             let summary: Vec<String> = analyze::extract_summary(&lecture_text,5,&keywords);
-            let resources: Vec<String> = match utils::suggest_resources(&keywords) {
+            let resources: Vec<String> = match utils::suggest_resources(&keywords).await {
                 Ok(r) => r,
                 Err(_) => vec![],
             };
@@ -111,45 +123,66 @@ async fn summarize_api(mut multipart: Multipart) -> impl IntoResponse {
 }
 
 //Start the Axum web server and defines what to do for each route
-async fn run_server() {
+async fn run_server(port: u16) -> Result<()> {
+    
     let static_files: ServeDir = ServeDir::new("./static");
+
+    //Create NERModel ONCE, wrap with Arc<Mutex<>> for safe sharing across async tasks
+    let ner_model = Arc::new(Mutex::new(NERModel::new(Default::default())?));
+
     //::<()> or : Router<()> when creating your Router if you are not using shared state.
     let app = Router::new()
-        .route("/", get(|| async { Html(std::fs::read_to_string("./static/index.html").unwrap()) }))
+        .route(
+            "/",
+            get(|| async { 
+                Html(std::fs::read_to_string("./static/index.html").unwrap()) 
+            }),
+        )
         .route("/api/summarize", post(summarize_api))
         //Serve static assets like style.css at /static/*
-        .nest_service("/static", axum::routing::get_service(static_files).handle_error(|_| async { (axum::http::StatusCode::INTERNAL_SERVER_ERROR, "Internal Server Error") }));
+        .nest_service(
+            "/static", 
+            axum::routing::get_service(static_files)
+            .handle_error(|_| async { 
+            (
+                axum::http::StatusCode::INTERNAL_SERVER_ERROR,
+                "Internal Server Error",
+            )
+        }),
+    )
+    .layer(Extension(ner_model)); //Add shared state layer
 
     //start service request with app 
-    let addr =  SocketAddr::from(([127,0,0,1], 8080));
+    let addr =  SocketAddr::from(([127,0,0,1], port));
     println!("Server running at http://{}", addr);
     
     //create a server that listens on the specified address and serves the app
     axum::Server::bind(&addr)
         .serve(app.into_make_service()) //provide client's socket address to handlers
-        .await
-        .unwrap();
+        .await?;
+        
+    Ok(())
 }
 
 //match is use to handle each subcommand variant 
 /*if let Err(e) = run_analysis(&input, &export, summary_sentences) {
                 eprintln!("Error: {}", e);   --> This one later add for error handling*/ 
 
-fn main() ->Result<(), Box<dyn std::error::Error + Send + Sync>> {
+#[tokio::main]
+async fn main() ->Result<(), Box<dyn std::error::Error + Send + Sync>> {
     //1. Parse CLI arguments{
     let cli = Cli::parse();
     match cli.command {
-        Commands::Serve => {
-            /*Run the async server (block on it)-->bridge between sync Rust code and async code
-            lets you "block" the current thread and wait for the async function to finish, running it to completion.*/
-            //future :a value representing a computation that will finish later
-            tokio::runtime::Runtime::new()?.block_on(run_server()); 
+        Commands::Serve { port } => {
+                run_server(port).await?; 
         }
         Commands::Analyze { input, export, summary_sentences } => {
             let lecture_text:String = pdf::extract_text(&input)?;
-            let keywords:Vec<String>  = analyze::extract_keywords_ner(&lecture_text);
+            //New up a model just for CLI mode (not the server)
+            let mut model = NERModel::new(Default::default())?;
+            let keywords:Vec<String>  = analyze::extract_keywords_ner(&mut model, &lecture_text);
             let summary: Vec<String> = analyze::extract_summary(&lecture_text, summary_sentences,&keywords);
-            let resources: Vec<String> = utils::suggest_resources(&keywords)?;
+            let resources: Vec<String> = utils::suggest_resources(&keywords).await?;
             println!("Exporting resources, count: {}", resources.len());
             for r in &resources {
                 println!("Resource: {}", r);
@@ -159,7 +192,8 @@ fn main() ->Result<(), Box<dyn std::error::Error + Send + Sync>> {
         }
         Commands::Keywords { input } => {
             let lecture_text:String = pdf::extract_text(&input)?;
-            let keywords:Vec<String>  = analyze::extract_keywords_ner(&lecture_text);
+            let mut model = NERModel::new(Default::default())?;
+            let keywords:Vec<String>  = analyze::extract_keywords_ner(&mut model,&lecture_text);
             println!("Extracted Keywords:");
             for keyword in keywords {
                 println!("- {}", keyword);
@@ -167,7 +201,8 @@ fn main() ->Result<(), Box<dyn std::error::Error + Send + Sync>> {
         }
         Commands::Summary { input, summary_sentences } => {
             let lecture_text:String = pdf::extract_text(&input)?;
-            let keywords:Vec<String>  = analyze::extract_keywords_ner(&lecture_text);
+            let mut model = NERModel::new(Default::default())?;
+            let keywords:Vec<String>  = analyze::extract_keywords_ner(&mut model,&lecture_text);
             let summary: Vec<String> = analyze::extract_summary(&lecture_text, summary_sentences,&keywords);
             println!("Extracted Summary:");
             for sentence in summary {
@@ -176,8 +211,9 @@ fn main() ->Result<(), Box<dyn std::error::Error + Send + Sync>> {
         }
         Commands::Resources { input } => {
             let lecture_text:String = pdf::extract_text(&input)?;
-            let keywords:Vec<String>  = analyze::extract_keywords_ner(&lecture_text);
-            let resources: Vec<String> = utils::suggest_resources(&keywords)?;
+            let mut model = NERModel::new(Default::default())?;
+            let keywords:Vec<String>  = analyze::extract_keywords_ner(&mut model,&lecture_text);
+            let resources: Vec<String> = utils::suggest_resources(&keywords).await?;
             println!("Suggested Resources:");
             for resource in resources {
                 println!("- {}", resource);
@@ -185,7 +221,8 @@ fn main() ->Result<(), Box<dyn std::error::Error + Send + Sync>> {
         }
         Commands::Entities { input } => {
             let lecture_text:String = pdf::extract_text(&input)?;
-            let entities: Vec<rust_bert::pipelines::ner::Entity> = analyze::extract_entities_ner(&lecture_text);
+            let mut model = NERModel::new(Default::default())?;
+            let entities: Vec<rust_bert::pipelines::ner::Entity> = analyze::extract_entities_ner(&mut model, &lecture_text);
             println!("Extracted Entities:");
             for entity in entities {
                 println!("Word: {}, Label: {}, Score: {}", entity.word, entity.label, entity.score);
